@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Light Elegant Theme -->
+    <meta name="theme-color" content="#f8fafc" />
+
+    <meta
+      name="description"
+      content="WildGuard - Animal Poaching Detection and Reporting System"
+    />
+
+    <meta
+      name="keywords"
+      content="Wildlife Protection, Animal Poaching, Forest Monitoring, AI Detection, Poaching Alert System"
+    />
+
+    <meta name="author" content="WildGuard Team" />
+
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Elegant Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <title>WildGuard - Poaching Detection</title>
+
+    <style>
+      body {
+        margin: 0;
+        font-family: "Inter", sans-serif;
+        background: linear-gradient(135deg, #f8fafc, #eef2ff);
+        color: #0f172a;
+      }
+
+      #loading-screen {
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 520px;
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(10px);
+        border-radius: 18px;
+        padding: 40px 30px;
+        text-align: center;
+        box-shadow: 0px 10px 35px rgba(15, 23, 42, 0.08);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+      }
+
+      .logo {
+        font-size: 2.4rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+        color: #2563eb;
+        margin-bottom: 8px;
+      }
+
+      .tagline {
+        font-size: 1.05rem;
+        font-weight: 400;
+        color: #475569;
+        margin-bottom: 25px;
+        line-height: 1.6;
+      }
+
+      .highlight {
+        font-weight: 600;
+        color: #0f172a;
+      }
+
+      .loader {
+        margin: auto;
+        width: 55px;
+        height: 55px;
+        border: 6px solid rgba(37, 99, 235, 0.15);
+        border-top: 6px solid #2563eb;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .footer {
+        margin-top: 20px;
+        font-size: 0.85rem;
+        color: #64748b;
+      }
+    </style>
+  </head>
+
+  <body>
+    <noscript>
+      You need to enable JavaScript to run WildGuard.
+    </noscript>
+
+    <!-- Elegant Loading UI -->
+    <div id="loading-screen">
+      <div class="card">
+        <div class="logo">WildGuard</div>
+
+        <div class="tagline">
+          An <span class="highlight">AI-powered Wildlife Protection</span>
+          platform to report and prevent animal poaching.
+        </div>
+
+        <div class="loader"></div>
+
+        <div class="footer">
+          Loading secure environment...
+        </div>
+      </div>
+    </div>
+
+    <div id="root"></div>
+
+    <script>
+      window.addEventListener("load", function () {
+        const loading = document.getElementById("loading-screen");
+        if (loading) loading.style.display = "none";
+      });
+    </script>
+  </body>
+</html>
