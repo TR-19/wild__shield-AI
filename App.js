@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import L from "leaflet";
+import logo from "./logo.png";
 import {
   MapContainer,
   TileLayer,
@@ -64,23 +66,208 @@ function MapClickHandler({ selectedIncident, addManualReport }) {
   return null;
 }
 
+// 📡 Sensor Icon (Blue)
+const sensorIcon = new L.Icon({
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+  shadowUrl:
+    "https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png",
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
+// 🚔 Ranger Icon (Green)
+const rangerIcon = new L.Icon({
+  iconUrl:
+    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+  shadowUrl:
+    "https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png",
+  iconSize: [35, 55],  // 🔥 bigger
+  iconAnchor: [17, 55],
+});
 export default function App() {
+  
   const [screen, setScreen] = useState("home");
 
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [selectedZone, setSelectedZone] = useState("Bandipur Forest Zone");
+  const handleAudioUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
 
-  const forestZones = [
-    { name: "Bandipur Forest Zone", center: [11.667, 76.633] },
-    { name: "Nagarhole Wildlife Zone", center: [12.04, 76.09] },
-    { name: "Mudumalai Tiger Reserve", center: [11.58, 76.53] },
-    { name: "Wayanad Wildlife Sanctuary", center: [11.715, 76.2] },
-  ];
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const arrayBuffer = await file.arrayBuffer();
+  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-  const currentZone =
-    forestZones.find((z) => z.name === selectedZone) || forestZones[0];
+  const data = audioBuffer.getChannelData(0);
 
-  const forestHQ = { name: "Forest HQ", position: [11.667, 76.633] };
+  // 🔍 Analyze audio signal
+  let peak = 0;
+  let sum = 0;
+
+  for (let i = 0; i < data.length; i++) {
+    const val = Math.abs(data[i]);
+    sum += val;
+    if (val > peak) peak = val;
+  }
+
+  
+  // 🎯 Smart classification
+
+  // 🔍 Frequency-based detection
+const analyser = audioContext.createAnalyser();
+const source = audioContext.createBufferSource();
+
+source.buffer = audioBuffer;
+source.connect(analyser);
+analyser.connect(audioContext.destination);
+
+source.start(0);
+
+setTimeout(() => {
+  analyser.getByteFrequencyData(freqData);
+}, 200);
+
+const freqData = new Uint8Array(analyser.frequencyBinCount);
+analyser.getByteFrequencyData(freqData);
+
+// Split frequencies into bands
+const lowFreq = freqData.slice(0, 50).reduce((a, b) => a + b, 0) / 50;
+const midFreq = freqData.slice(50, 120).reduce((a, b) => a + b, 0) / 70;
+const highFreq =
+  freqData.slice(120).reduce((a, b) => a + b, 0) /
+  (freqData.length - 120);
+const avg = sum / data.length;
+console.log("Peak:", peak, "Avg:", avg);
+
+
+// ✅ ADD THIS HERE
+console.log("Peak:", peak);
+console.log("Average:", avg);
+// 🎯 Better classification
+let detectedType;
+
+// 🔫 Gunshot = sharp spike
+if (peak > 0.6 && avg < 0.15) {
+  detectedType = { name: "gunshot", priority: "CRITICAL" };
+
+// 🪓 Chainsaw = loud continuous
+} else if (avg > 0.2 && peak > 0.4) {
+  detectedType = { name: "chainsaw", priority: "HIGH" };
+
+// 🚙 Vehicle = medium noise
+} else if (avg > 0.1) {
+  detectedType = { name: "vehicle", priority: "MEDIUM" };
+
+// 👣 Low noise
+} else {
+  detectedType = { name: "intrusion", priority: "LOW" };
+}
+
+  // 📡 Triangulation
+  const activeSensors = sensors.slice(0, 3);
+
+  const location = triangulateThreatLocation(
+    activeSensors.map((s) => s.position)
+  );
+
+  const confidence = Math.floor(Math.random() * 15) + 80;
+
+  createIncidentReport(
+    location,
+    detectedType.name,
+    detectedType.priority,
+    "AI-AUDIO"
+  );
+
+  alert(
+    `🎧 AI detected: ${detectedType.name.toUpperCase()} (Confidence: ${confidence}%)`
+  );
+};
+
+  // ================================
+// ZONE CONFIGURATION
+// ================================
+const [activeTab, setActiveTab] = useState("dashboard");
+const [selectedZone, setSelectedZone] = useState("Bandipur Forest Zone");
+
+const forestZones = [
+  {
+    name: "Bandipur Forest Zone",
+    center: [11.667, 76.633],
+    hq: { name: "Bandipur HQ", position: [11.667, 76.633] },
+    sensors: [
+      { id: "S1", name: "Sensor A", position: [11.668, 76.631], battery: 92, signal: 88, status: "ACTIVE", lastDetected: "NONE" },
+      { id: "S2", name: "Sensor B", position: [11.664, 76.639], battery: 80, signal: 70, status: "ACTIVE", lastDetected: "NONE" },
+      { id: "S3", name: "Sensor C", position: [11.672, 76.645], battery: 67, signal: 77, status: "ACTIVE", lastDetected: "NONE" },
+    ],
+    teams: [
+      { id: 1, name: "Alpha Team", position: [11.67, 76.63], phone: "9111111111", status: "AVAILABLE" },
+      { id: 2, name: "Bravo Team", position: [11.66, 76.64], phone: "9222222222", status: "AVAILABLE" },
+      { id: 2, name: "Charlie Team", position: [11.665, 76.635], phone: "9333333333", status: "AVAILABLE" },
+],
+  },
+
+  {
+    name: "Nagarhole Wildlife Zone",
+    center: [12.04, 76.09],
+    hq: { name: "Nagarhole HQ", position: [12.04, 76.09] },
+    sensors: [
+      { id: "S4", name: "Sensor D", position: [12.041, 76.091], battery: 85, signal: 80, status: "ACTIVE", lastDetected: "NONE" },
+      { id: "S5", name: "Sensor E", position: [12.038, 76.095], battery: 75, signal: 72, status: "ACTIVE", lastDetected: "NONE" },
+    ],
+    teams: [
+      { id: 3, name: "Delta Team", position: [12.042, 76.09], phone: "9444444444", status: "AVAILABLE" },
+    ],
+  },
+
+  {
+    name: "Mudumalai Tiger Reserve",
+    center: [11.58, 76.53],
+    hq: { name: "Mudumalai HQ", position: [11.58, 76.53] },
+    sensors: [
+      { id: "S6", name: "Sensor F", position: [11.582, 76.531], battery: 88, signal: 82, status: "ACTIVE", lastDetected: "NONE" },
+      { id: "S7", name: "Sensor G", position: [11.579, 76.528], battery: 70, signal: 65, status: "ACTIVE", lastDetected: "NONE" },
+    ],
+    teams: [
+      { id: 4, name: "Echo Team", position: [11.581, 76.53], phone: "9555555555", status: "AVAILABLE" },
+    ],
+  },
+
+  {
+    name: "Wayanad Wildlife Sanctuary",
+    center: [11.715, 76.2],
+    hq: { name: "Wayanad HQ", position: [11.715, 76.2] },
+    sensors: [
+      { id: "S8", name: "Sensor H", position: [11.716, 76.201], battery: 90, signal: 85, status: "ACTIVE", lastDetected: "NONE" },
+      { id: "S9", name: "Sensor I", position: [11.713, 76.198], battery: 78, signal: 70, status: "ACTIVE", lastDetected: "NONE" },
+    ],
+    teams: [
+      { id: 5, name: "Foxtrot Team", position: [11.714, 76.2], phone: "9666666666", status: "AVAILABLE" },
+    ],
+  },
+];
+
+// ================================
+// CURRENT ZONE
+// ================================
+const currentZone =
+  forestZones.find((z) => z.name === selectedZone) || forestZones[0];
+
+// ================================
+// DYNAMIC DATA
+// ================================
+const [sensors, setSensors] = useState([]);
+const [patrolTeams, setPatrolTeams] = useState([]);
+
+// ✅ HQ always from selected zone
+const forestHQ = currentZone.hq;
+
+// ================================
+// AUTO UPDATE ON ZONE CHANGE
+// ================================
+useEffect(() => {
+  setSensors(currentZone.sensors);
+  setPatrolTeams(currentZone.teams);
+}, [selectedZone]);
 
   const incidentTypes = [
     { name: "gunshot", priority: "CRITICAL", icon: "🔫" },
@@ -113,6 +300,8 @@ export default function App() {
 
   // drone simulation
   const [droneRoute, setDroneRoute] = useState(null);
+  const [droneStatus, setDroneStatus] = useState("IDLE"); 
+  const [droneDetection, setDroneDetection] = useState(null);
 
   // LIVE ACOUSTIC AI
   const [micStatus, setMicStatus] = useState("OFF");
@@ -126,8 +315,8 @@ export default function App() {
 
   const [lastAudioClip, setLastAudioClip] = useState(null);
 
-  // Sensor Nodes
-  const [sensors, setSensors] = useState([
+  // Sensor Nodesconst [sensors, setSensors] = 
+  useState([
     {
       id: "S1",
       name: "Sensor Node A",
@@ -158,35 +347,7 @@ export default function App() {
   ]);
 
   // Patrol Teams
-  const [patrolTeams, setPatrolTeams] = useState([
-    {
-      id: 1,
-      name: "Alpha Team",
-      position: [11.67, 76.63],
-      phone: "9111111111",
-      status: "AVAILABLE",
-      description:
-        "Rapid response team trained for gunshot alerts and high-risk tracking missions.",
-    },
-    {
-      id: 2,
-      name: "Bravo Team",
-      position: [11.66, 76.64],
-      phone: "9222222222",
-      status: "AVAILABLE",
-      description:
-        "Patrol unit specialized in trap detection, animal rescue support, and perimeter scanning.",
-    },
-    {
-      id: 3,
-      name: "Charlie Team",
-      position: [11.675, 76.645],
-      phone: "9333333333",
-      status: "AVAILABLE",
-      description:
-        "Night surveillance unit equipped for suspicious movement detection and thermal monitoring.",
-    },
-  ]);
+  
 
   /* ================================
      UTILITIES
@@ -336,23 +497,65 @@ export default function App() {
   /* ================================
      DRONE SCAN SIMULATION
 ================================ */
-  const deployDrone = (incidentLocation) => {
-    const droneStart = forestHQ.position;
+  const deployDrone = (incidentLocation, incidentName) => {
+  const droneStart = forestHQ.position;
 
-    const mid = [
-      (droneStart[0] + incidentLocation[0]) / 2 + 0.002,
-      (droneStart[1] + incidentLocation[1]) / 2 + 0.001,
-    ];
+  const mid = [
+    (droneStart[0] + incidentLocation[0]) / 2 + 0.002,
+    (droneStart[1] + incidentLocation[1]) / 2 + 0.001,
+  ];
 
-    setDroneRoute({
-      points: [droneStart, mid, incidentLocation],
-    });
+  setDroneStatus("FLYING");
+  setDroneDetection(null);
 
+  setDroneRoute({
+    points: [droneStart, mid, incidentLocation],
+  });
+
+  // After reaching location
+  setTimeout(() => {
+    setDroneStatus("SCANNING");
+
+    // Simulate AI detection
     setTimeout(() => {
-      setDroneRoute(null);
-      alert("🛰️ Drone Scan Complete: No confirmed human target detected.");
-    }, 7000);
-  };
+      const humanDetected = incidentName === "gunshot" || incidentName === "intrusion";
+      if (humanDetected) {
+        setDroneStatus("HUMAN DETECTED");
+
+        setDroneDetection({
+          detected: true,
+          confidence: Math.floor(Math.random() * 15) + 85,
+          message: "Suspicious human movement detected near hotspot!",
+        });
+
+        // Auto create report
+        createIncidentReport(
+          incidentLocation,
+          "human activity",
+          "CRITICAL",
+          "DRONE"
+        );
+
+      } else {
+        setDroneStatus("CLEAR");
+
+        setDroneDetection({
+          detected: false,
+          confidence: Math.floor(Math.random() * 10) + 90,
+          message: "No human activity detected. Area appears clear.",
+        });
+      }
+
+      // Remove drone route after scan
+      setTimeout(() => {
+        setDroneRoute(null);
+        setDroneStatus("IDLE");
+      }, 5000);
+
+    }, 4000);
+
+  }, 4000);
+};
 
   /* ================================
      MAIN REPORT CREATION
@@ -453,7 +656,7 @@ export default function App() {
         setTimeout(() => setCriticalAlert(false), 5000);
       }
 
-      deployDrone(location);
+      deployDrone(location, incidentName);
     }
   };
 
@@ -565,31 +768,48 @@ export default function App() {
      SENSOR SIMULATION
 ================================ */
   const triggerSensorDetection = () => {
-    const activeSensors = sensors.filter((s) => s.status === "ACTIVE");
-    if (activeSensors.length < 2) {
-      alert("Need at least 2 active sensors for triangulation.");
-      return;
-    }
+  const activeSensors = sensors.filter((s) => s.status === "ACTIVE");
 
-    const randomThreat =
-      incidentTypes[Math.floor(Math.random() * (incidentTypes.length - 1))];
+  if (activeSensors.length < 2) {
+    alert("Need at least 2 active sensors for triangulation.");
+    return;
+  }
 
-    const chosenSensors = activeSensors.slice(0, 3);
-    const triangulated = triangulateThreatLocation(
-      chosenSensors.map((s) => s.position)
-    );
+  // ✅ Pick a sensor that actually detected something
+  const sensorWithDetection = activeSensors.find(
+    (s) => s.lastDetected !== "NONE"
+  );
 
-    createIncidentReport(
-      triangulated,
-      randomThreat.name,
-      randomThreat.priority,
-      chosenSensors[0].id
-    );
+  const lastDetected = sensorWithDetection?.lastDetected || "intrusion";
 
-    alert(
-      `📡 Sensor Network Detected ${randomThreat.name.toUpperCase()} (Triangulated Location Generated)`
-    );
-  };
+  // ✅ Match with incident types
+  const matched = incidentTypes.find(
+    (i) => i.name === lastDetected.toLowerCase()
+  );
+
+  const chosenSensors = activeSensors.slice(0, 3);
+
+  // 📍 Triangulate location
+  const triangulated = triangulateThreatLocation(
+    chosenSensors.map((s) => s.position)
+  );
+
+  // 🚨 Create report
+  createIncidentReport(
+    triangulated,
+    matched?.name || "intrusion",
+    matched?.priority || "LOW",
+    chosenSensors[0].id
+  );
+
+  // 🔔 Show result
+  alert(
+    `📡 Sensor detected ${matched?.name?.toUpperCase() || "INTRUSION"}`
+  );
+};
+
+    // Get last detected sound from sensors
+
 
   /* ================================
      STOP SIREN WHEN MUTED
@@ -615,9 +835,9 @@ export default function App() {
 
         <div className="intro-navbar">
           <div className="brand">
-            <Shield size={26} />
-            <span>Forest Guardian AI</span>
-          </div>
+  <img src={logo} alt="Logo" style={{ width: "40px", marginRight: "8px" }} />
+  <span>Forest Guardian AI</span>
+</div>
 
           <div className="nav-links">
             <a href="#about">About</a>
@@ -982,30 +1202,43 @@ export default function App() {
         )}
 
         {activeTab === "sensors" && (
-          <>
-            <h3 style={{ marginTop: "18px" }}>📡 Sensor Network</h3>
+  <>
+    <h3 style={{ marginTop: "18px" }}>📡 Sensor Network</h3>
 
-            {sensors.map((s) => (
-              <div key={s.id} className="report-card">
-                <h4>
-                  {s.name} ({s.id})
-                </h4>
-                <p>Status: {s.status}</p>
-                <p>Battery: {s.battery}%</p>
-                <p>Signal: {s.signal}%</p>
-                <p>Last Detected: {s.lastDetected}</p>
-              </div>
-            ))}
+    {sensors.map((s) => (
+      <div key={s.id} className="report-card">
+        <h4>
+          {s.name} ({s.id})
+        </h4>
+        <p>Status: {s.status}</p>
+        <p>Battery: {s.battery}%</p>
+        <p>Signal: {s.signal}%</p>
+        <p>Last Detected: {s.lastDetected}</p>
+      </div>
+    ))}
 
-            <button
-              className="dispatch-btn dispatch"
-              style={{ width: "100%", marginTop: "12px" }}
-              onClick={triggerSensorDetection}
-            >
-              📡 Simulate Sensor Detection + Triangulation
-            </button>
-          </>
-        )}
+    {/* ✅ ADD THIS BLOCK HERE */}
+    <div className="report-card" style={{ marginTop: "12px" }}>
+      <h4>🎧 Upload Audio for AI Detection</h4>
+
+      <input
+        type="file"
+        accept="audio/mp3"
+        onChange={handleAudioUpload}
+        style={{ marginTop: "8px" }}
+      />
+    </div>
+
+    {/* EXISTING BUTTON */}
+    <button
+      className="dispatch-btn dispatch"
+      style={{ width: "100%", marginTop: "12px" }}
+      onClick={triggerSensorDetection}
+    >
+      📡 Simulate Sensor Detection + Triangulation
+    </button>
+  </>
+)}
 
         {activeTab === "analytics" && (
           <>
@@ -1217,6 +1450,37 @@ export default function App() {
           </div>
         )}
 
+        {droneDetection && (
+  <div
+    style={{
+      position: "absolute",
+      bottom: "140px",
+      right: "25px",
+      background: "white",
+      padding: "14px 18px",
+      borderRadius: "16px",
+      border: "1px solid rgba(15,23,42,0.12)",
+      boxShadow: "0px 10px 20px rgba(15,23,42,0.18)",
+      zIndex: 2000,
+      minWidth: "280px",
+    }}
+  >
+    <h4 style={{ marginBottom: "6px", color: "#16a34a" }}>
+      🛰️ Drone Scan Result
+    </h4>
+
+    <p>
+      Status:{" "}
+      <b style={{ color: droneDetection.detected ? "red" : "green" }}>
+        {droneDetection.detected ? "HUMAN DETECTED" : "CLEAR"}
+      </b>
+    </p>
+
+    <p>Confidence: {droneDetection.confidence}%</p>
+    <p>{droneDetection.message}</p>
+  </div>
+)}
+
         <div className="topbar">
           <div className="topbar-item">
             <h3>Total</h3>
@@ -1224,9 +1488,11 @@ export default function App() {
           </div>
 
           <div className="topbar-item">
-            <h3>Critical</h3>
-            <p>{criticalCount}</p>
-          </div>
+  <h3>Drone</h3>
+  <p style={{ fontWeight: "bold", color: "#7c3aed" }}>
+    {droneStatus}
+  </p>
+</div>
 
           <div className="topbar-item">
             <h3>Risk</h3>
@@ -1293,7 +1559,7 @@ export default function App() {
 
           {/* Sensors */}
           {sensors.map((s) => (
-            <Marker key={s.id} position={s.position}>
+            <Marker key={s.id} position={s.position} icon={sensorIcon}>
               <Popup>
                 📡 <b>{s.name}</b> <br />
                 Battery: {s.battery}% <br />
@@ -1306,7 +1572,7 @@ export default function App() {
 
           {/* Patrol Teams */}
           {patrolTeams.map((team) => (
-            <Marker key={team.id} position={team.position}>
+            <Marker key={team.id} position={team.position} icon={rangerIcon}>
               <Popup>
                 🚔 <b>{team.name}</b> <br />
                 Status: <b>{team.status}</b> <br />
